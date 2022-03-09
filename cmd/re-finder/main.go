@@ -4,14 +4,16 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"real_estate_finder/real_estate_finder/internal/server"
 )
 
 func main() {
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Initial commit")
 	})
-	err := http.ListenAndServe(":82", nil)
-	if err != nil {
-		log.Fatal(err)
+
+	srv := server.New()
+	if err := srv.Start(":82"); err != nil {
+		log.Fatalln(err.Error())
 	}
 }
