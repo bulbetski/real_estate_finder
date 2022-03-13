@@ -3,18 +3,19 @@ package server
 import (
 	"encoding/json"
 	"io/ioutil"
+	"net/http"
 	"real_estate_finder/real_estate_finder/internal/models"
 
 	"github.com/gin-gonic/gin"
 )
 
-func NewRouter() *gin.Engine {
+func NewRouter(token string) *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Recovery()) // recovers from any panics and writes a 500
 	router.Use(gin.Logger())
 
-	router.GET("/ping", func(ctx *gin.Context) {
-		ctx.IndentedJSON(200, gin.H{
+	router.GET("/ping", func(c *gin.Context) {
+		c.IndentedJSON(200, gin.H{
 			"message": "pong",
 		})
 	})
@@ -38,6 +39,16 @@ func NewRouter() *gin.Engine {
 		} else {
 			c.IndentedJSON(200, mid)
 		}
+	})
+
+	router.GET("/map", func(c *gin.Context) {
+		c.HTML(
+			http.StatusOK,
+			"mapbasics.html",
+			gin.H{
+				"token": token,
+			},
+		)
 	})
 
 	return router
