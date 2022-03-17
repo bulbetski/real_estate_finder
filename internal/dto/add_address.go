@@ -1,10 +1,10 @@
 package dto
 
 type AddAddressRequestBody struct {
-	Latitude  float64 `json:"latitude"`
-	Longitude float64 `json:"longitude"`
+	FullAddress string `json:"full_address"`
 }
 
 type AddAddressResponseBody struct {
-	Success bool `json:"success,omitempty"`
+	ID      int64 `json:"id"`
+	Success bool  `json:"success,omitempty"`
 }

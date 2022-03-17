@@ -1,9 +1,5 @@
 package dto
 
-type GetAddressByIDRequestBody struct {
-	ID int64 `json:"id"`
-}
-
 type GetAddressByIDResponseBody struct {
 	FormattedAddress string `json:"formatted_address"`
 	Street           string `json:"street"`

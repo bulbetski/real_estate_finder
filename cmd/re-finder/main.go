@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"os"
 	"real_estate_finder/real_estate_finder/internal/geocoder"
@@ -12,15 +11,10 @@ import (
 	_ "github.com/lib/pq"
 )
 
-const (
-	host   = "localhost"
-	port   = 5432
-	user   = ""
-	dbname = ""
-)
+var databaseURL = "host=localhost port=5432 user=zproselkov dbname=re_finder sslmode=disable"
 
 func main() {
-	databaseURL := fmt.Sprintf("host=%s port=%d user=%s dbname=%s sslmode=disable", host, port, user, dbname)
+
 	// Connects to db
 	db, err := sql.Open("postgres", databaseURL)
 	if err != nil {

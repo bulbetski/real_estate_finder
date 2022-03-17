@@ -2,7 +2,6 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"real_estate_finder/real_estate_finder/internal/dto"
 
@@ -12,8 +11,8 @@ import (
 type repositoryInterface interface{}
 
 type geocoderInterface interface {
-	AddAddress(req *dto.AddAddressRequestBody) (*dto.AddAddressResponseBody, error)
-	GetAddressByID(req *dto.GetAddressByIDRequestBody) (*dto.GetAddressByIDResponseBody, error)
+	FindAll() ([]*dto.FindAllResponseBody, error)
+	AddAddress(addr string) (*dto.AddAddressResponseBody, error)
 }
 
 type Server struct {
@@ -26,9 +25,7 @@ func New(
 	repository repositoryInterface,
 	geocoder geocoderInterface,
 ) *Server {
-	r := gin.New()
-	r.Use(gin.Recovery()) // recovers from any panics and writes a 500
-	r.Use(gin.Logger())
+	r := gin.Default() // Default With the Logger and Recovery middleware already attached
 
 	return &Server{
 		r:          r,
@@ -38,81 +35,87 @@ func New(
 }
 
 func (s *Server) Start(addr string) error {
-	// TODO: pretty error formatting
-	s.r.GET("/ping", func(c *gin.Context) {
-		c.IndentedJSON(200, gin.H{
-			"message": "pong",
-		})
-	})
-
-	s.r.POST("address", func(c *gin.Context) {
-		b, err := ioutil.ReadAll(c.Request.Body)
+	s.r.GET("addresses", func(c *gin.Context) {
+		resp, err := s.geocoder.FindAll()
 		if err != nil {
-			c.IndentedJSON(500, gin.H{"readall error": err.Error()})
+			c.IndentedJSON(500, gin.H{
+				"error": err.Error(),
+			})
 			return
 		}
 
+		c.IndentedJSON(200, &resp)
+	})
+
+	s.r.POST("addresses", func(c *gin.Context) {
+		b, err := ioutil.ReadAll(c.Request.Body)
+		if err != nil {
+			c.IndentedJSON(500, gin.H{
+				"error": err.Error(),
+			})
+			return
+		}
 		var req *dto.AddAddressRequestBody
 		err = json.Unmarshal(b, &req)
 		if err != nil {
-			c.IndentedJSON(500, gin.H{"unmarshalling error": err.Error()})
+			c.IndentedJSON(500, gin.H{
+				"error": err.Error(),
+			})
 			return
 		}
-		fmt.Println(req)
 
-		resp, err := s.geocoder.AddAddress(req)
+		if req.FullAddress == "" {
+			c.IndentedJSON(400, gin.H{
+				"error": "address len is 0",
+			})
+			return
+		}
+		resp, err := s.geocoder.AddAddress(req.FullAddress)
 		if err != nil {
-			c.IndentedJSON(500, gin.H{"geocoder error": err.Error()})
+			c.IndentedJSON(500, gin.H{
+				"error": err.Error(),
+			})
 			return
 		}
 
 		c.IndentedJSON(200, &resp)
 	})
-
-	s.r.GET("address", func(c *gin.Context) {
-		b, err := ioutil.ReadAll(c.Request.Body)
-		if err != nil {
-			c.IndentedJSON(500, gin.H{"readall error": err.Error()})
-			return
-		}
-
-		var req *dto.GetAddressByIDRequestBody
-		err = json.Unmarshal(b, &req)
-		if err != nil {
-			c.IndentedJSON(500, gin.H{"unmarshalling error": err.Error()})
-			return
-		}
-		fmt.Println(req)
-		resp, err := s.geocoder.GetAddressByID(req)
-		if err != nil {
-			c.IndentedJSON(500, gin.H{"geocoder error": err.Error()})
-			return
-		}
-
-		c.IndentedJSON(200, &resp)
-	})
-
-
-	//s.r.POST("/midpoint", func(c *gin.Context) {
-	//	b, err := ioutil.ReadAll(c.Request.Body)
-	//	if err != nil {
-	//		c.IndentedJSON(500, gin.H{"error reading body": err})
+	//s.r.POST("addresses", func(c *gin.Context) {
+	//	reqLat, ok := c.GetPostForm("lat")
+	//	if !ok {
+	//		c.IndentedJSON(http.StatusBadRequest, gin.H{
+	//			"error": "no latitude argument provided",
+	//		})
 	//	}
-	//
-	//	var p []models.Point
-	//	if err = json.Unmarshal(b, &p); err != nil {
-	//		c.IndentedJSON(500, gin.H{"unmarshalling error": err})
-	//	}
-	//
-	//	mid, err := models.Midpoint(p)
+	//	lat, err := strconv.ParseFloat(reqLat, 64)
 	//	if err != nil {
-	//		c.IndentedJSON(500, gin.H{
+	//		c.IndentedJSON(http.StatusBadRequest, gin.H{
 	//			"error": err.Error(),
 	//		})
-	//	} else {
-	//		c.IndentedJSON(200, mid)
 	//	}
+	//
+	//	reqLng, ok := c.GetPostForm("lng")
+	//	if !ok {
+	//		c.IndentedJSON(http.StatusBadRequest, gin.H{
+	//			"error": "no longitude argument provided",
+	//		})
+	//	}
+	//	lng, err := strconv.ParseFloat(reqLng, 64)
+	//	if err != nil {
+	//		c.IndentedJSON(http.StatusBadRequest, gin.H{
+	//			"error": err.Error(),
+	//		})
+	//	}
+	//
+	//	resp, err := s.geocoder.AddAddress(lat, lng)
+	//	if err != nil {
+	//		c.IndentedJSON(500, gin.H{"geocoder error": err.Error()})
+	//		return
+	//	}
+	//
+	//	c.IndentedJSON(200, &resp)
 	//})
+
 	//
 	//s.r.GET("/map", func(c *gin.Context) {
 	//	c.HTML(
