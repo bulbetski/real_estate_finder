@@ -80,52 +80,7 @@ func (s *Server) Start(addr string) error {
 
 		c.IndentedJSON(200, &resp)
 	})
-	//s.r.POST("addresses", func(c *gin.Context) {
-	//	reqLat, ok := c.GetPostForm("lat")
-	//	if !ok {
-	//		c.IndentedJSON(http.StatusBadRequest, gin.H{
-	//			"error": "no latitude argument provided",
-	//		})
-	//	}
-	//	lat, err := strconv.ParseFloat(reqLat, 64)
-	//	if err != nil {
-	//		c.IndentedJSON(http.StatusBadRequest, gin.H{
-	//			"error": err.Error(),
-	//		})
-	//	}
-	//
-	//	reqLng, ok := c.GetPostForm("lng")
-	//	if !ok {
-	//		c.IndentedJSON(http.StatusBadRequest, gin.H{
-	//			"error": "no longitude argument provided",
-	//		})
-	//	}
-	//	lng, err := strconv.ParseFloat(reqLng, 64)
-	//	if err != nil {
-	//		c.IndentedJSON(http.StatusBadRequest, gin.H{
-	//			"error": err.Error(),
-	//		})
-	//	}
-	//
-	//	resp, err := s.geocoder.AddAddress(lat, lng)
-	//	if err != nil {
-	//		c.IndentedJSON(500, gin.H{"geocoder error": err.Error()})
-	//		return
-	//	}
-	//
-	//	c.IndentedJSON(200, &resp)
-	//})
 
-	//
-	//s.r.GET("/map", func(c *gin.Context) {
-	//	c.HTML(
-	//		http.StatusOK,
-	//		"mapbasics.html",
-	//		gin.H{
-	//			"token": token,
-	//		},
-	//	)
-	//})
 
 	return s.r.Run(addr)
 }
