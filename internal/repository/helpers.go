@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func getValuesString(argCount, rowsCount, startWith int) string {
+func genStmtValuesString(argCount, rowsCount, startWith int) string {
 	if argCount < 1 {
 		return ""
 	}

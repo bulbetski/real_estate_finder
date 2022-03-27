@@ -4,9 +4,9 @@ import (
 	"database/sql"
 	"log"
 	"os"
-	"real_estate_finder/real_estate_finder/internal/geocoder"
 	"real_estate_finder/real_estate_finder/internal/repository"
 	"real_estate_finder/real_estate_finder/internal/server"
+	"real_estate_finder/real_estate_finder/internal/webscraper"
 
 	_ "github.com/lib/pq"
 )
@@ -28,10 +28,10 @@ func main() {
 	repo := repository.New(db)
 
 	token := os.Getenv("YANDEX_API_TOKEN")
-	gc := geocoder.New(token, repo)
+	ws := webscraper.New(token, repo)
 
-	srv := server.New(repo, gc)
-	srv.LoadHTML("templates/*")
+	srv := server.New(repo, ws)
+	//srv.LoadHTML("templates/*")
 
 	if err := srv.Start(":82"); err != nil {
 		log.Fatalln(err.Error())
