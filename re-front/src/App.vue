@@ -1,18 +1,11 @@
-<script>
-export default {
-    data() {
-        return {
-            count: 0
-        }
-    },
-    methods: {
-        increment() {
-            this.count++
-        }
-    }
-}
-</script>
-
 <template>
-    <button @click="this.increment()">count is: {{ count }}</button>
+  <router-view />
 </template>
+
+<script>
+import { defineComponent } from 'vue'
+
+export default defineComponent({
+  name: 'App'
+})
+</script>
