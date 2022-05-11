@@ -15,7 +15,7 @@ func (r *repository) InsertRentalOffers(rentalOffers []*types.RentalOffer) error
 	validOffers := validateAndTrimOffers(rentalOffers)
 
 	err := r.withTransaction(ctx, func(ctx context.Context, tx *sql.Tx) error {
-		err := addRentalOffer(validOffers, tx)
+		err := addRentalOffers(validOffers, tx)
 		if err != nil {
 			return fmt.Errorf("failed to insert rental offers: %v", err)
 		}
@@ -44,7 +44,9 @@ func isValid(offer *types.RentalOffer) bool {
 	hasCoords := offer.Latitude != -1 && offer.Longitude != -1
 	hasAddr := offer.FullAddress != ""
 	hasLink := offer.Link != ""
-	return hasCoords && hasAddr && hasLink
+	hasPrice := offer.Price != 0
+
+	return hasCoords && hasAddr && hasLink && hasPrice
 }
 
 // Разделяет предложения об аренде по уникальности координат
@@ -73,11 +75,12 @@ func isValid(offer *types.RentalOffer) bool {
 //	return
 //}
 
-func addRentalOffer(offers []*types.RentalOffer, tx *sql.Tx) error {
-	cols := 4
+func addRentalOffers(offers []*types.RentalOffer, tx *sql.Tx) error {
+	cols := 6
 
+	// todo: on conflict do nothing
 	q := fmt.Sprintf(`
-		INSERT INTO rental_offer (latitude, longitude, full_address, link) 
+		INSERT INTO rental_offer (latitude, longitude, full_address, link, price, property_type) 
 			VALUES %s`, genStmtValuesString(cols, len(offers), 1))
 
 	vals := make([]interface{}, 0, len(offers)*cols)
@@ -88,6 +91,8 @@ func addRentalOffer(offers []*types.RentalOffer, tx *sql.Tx) error {
 			offer.Longitude,
 			offer.FullAddress,
 			offer.Link,
+			offer.Price,
+			offer.PropertyType,
 		)
 	}
 
@@ -97,7 +102,7 @@ func addRentalOffer(offers []*types.RentalOffer, tx *sql.Tx) error {
 }
 
 func (r *repository) GetRentalOffers() ([]*types.RentalOffer, error) {
-	q := `SELECT id, latitude, longitude, full_address, link, created from rental_offer`
+	q := `SELECT id, latitude, longitude, full_address, link, price, property_type, created  from rental_offer`
 
 	rentalOfers := make([]*types.RentalOffer, 0)
 	rows, err := r.db.Query(q)
@@ -111,6 +116,8 @@ func (r *repository) GetRentalOffers() ([]*types.RentalOffer, error) {
 			&offer.Longitude,
 			&offer.FullAddress,
 			&offer.Link,
+			&offer.Price,
+			&offer.PropertyType,
 			&offer.Created,
 		)
 		if err != nil {

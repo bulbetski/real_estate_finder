@@ -5,6 +5,8 @@ import (
 	"log"
 	"real_estate_finder/real_estate_finder/internal/dto"
 	"real_estate_finder/real_estate_finder/internal/repository/types"
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/codingsince1985/geo-golang"
@@ -35,21 +37,35 @@ func New(token string, repository repositoryInterface) *webscraper {
 
 // ParseRentalOffers ...
 // TODO: прокидывать кол-во страниц, которые надо распарсить
-func (ws *webscraper) ParseRentalOffers() error {
+func (ws *webscraper) ParseRentalOffers(propertyTypes []types.PropertyType) error {
 	c := colly.NewCollector()
 	extensions.RandomUserAgent(c)
 
 	rentalOffers := make([]*dto.RentalOffer, 0)
 
-	c.OnHTML("div.OffersSerpItem__generalInfo", func(e *colly.HTMLElement) {
+	c.OnHTML("div.OffersSerpItem__info", func(e *colly.HTMLElement) {
 		offer := &dto.RentalOffer{}
-		addr := e.ChildText("div.OffersSerpItem__address")
-		offer.FullAddress = addr
+		generalInfo := e.DOM.Find("div.OffersSerpItem__generalInfo")
+		addr := generalInfo.Find("div.OffersSerpItem__address")
+		offer.FullAddress = addr.Text()
 
-		href := e.ChildAttr("a", "href")
+		href, _ := generalInfo.Find("a").Attr("href")
 		if href != "" && strings.HasPrefix(href, "/offer") {
 			offer.Link = rentalOfferPrefix + href
 		}
+
+		price := strings.ReplaceAll(e.ChildText("div.OffersSerpItem__dealInfo span.price"), "\u00a0", "")
+		price = strings.Join(strings.Split(price, " "), "")
+		price = strings.TrimSuffix(price, "₽")
+		intPrice, err := strconv.ParseInt(price, 10, 64)
+		if err != nil {
+			// dont panic
+		}
+		offer.Price = intPrice
+
+		propertyTypeHeader := generalInfo.Find("h3")
+		extracted := extractPropertyType(propertyTypeHeader.Text())
+		offer.PropertyType = extracted
 
 		rentalOffers = append(rentalOffers, offer)
 	})
@@ -62,10 +78,11 @@ func (ws *webscraper) ParseRentalOffers() error {
 		log.Println(r.StatusCode)
 	})
 
-	for i := 1; i < 13; i++ {
-		err := c.Visit(fmt.Sprintf("https://realty.yandex.ru/moskva_i_moskovskaya_oblast/kupit/kvartira/studiya/metro-ramenki/?page=%d", i))
+	for i := 1; i < 2; i++ {
+		url := buildURL(propertyTypes, i)
+		err := c.Visit(url)
 		if err != nil {
-			log.Fatalln(err)
+			return fmt.Errorf("failed to visit %s: %v", url, err)
 		}
 	}
 
@@ -83,10 +100,49 @@ func (ws *webscraper) ParseRentalOffers() error {
 
 	err := ws.repository.InsertRentalOffers(toRepoRentalOffers(rentalOffers))
 	if err != nil {
-		return fmt.Errorf("repository.InsertRentalOffers: %v", err)
+		return fmt.Errorf("failed to insert rental offers: %v", err)
 	}
 
 	return nil
+}
+
+func extractPropertyType(s string) string {
+	split := strings.Split(s, ",")
+	propertyType := split[len(split)-1]
+	if strings.Contains(propertyType, "студия") {
+		return types.PropertyType0
+	}
+
+	re := regexp.MustCompile("[0-9]+")
+	numberOfRooms := re.FindString(propertyType)
+	switch numberOfRooms {
+	case types.PropertyType1, types.PropertyType2, types.PropertyType3:
+		return numberOfRooms
+	}
+
+	return types.PropertyType4plus
+}
+
+func buildURL(propertyTypes []types.PropertyType, page int) string {
+	const baseURL = "https://realty.yandex.ru/moskva_i_moskovskaya_oblast/kupit/kvartira/"
+	if len(propertyTypes) == 0 {
+		return fmt.Sprintf(baseURL+"?page=%d", page)
+	}
+
+	const roomsTotalArg = "roomsTotal="
+	var sb strings.Builder
+	sb.WriteString(baseURL)
+	for i, pType := range propertyTypes {
+		if i == 0 {
+			sb.WriteString("?")
+		}
+		sb.WriteString(roomsTotalArg + string(pType))
+		if i < len(propertyTypes)-1 {
+			sb.WriteString("&")
+		}
+	}
+
+	return fmt.Sprintf(sb.String()+"&page=%d", page)
 }
 
 func (ws *webscraper) GetRentalOfferse() ([]*dto.RentalOffer, error) {

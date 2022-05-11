@@ -1,7 +1,12 @@
 package server
 
 import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"real_estate_finder/real_estate_finder/internal/dto"
+	"real_estate_finder/real_estate_finder/internal/repository/types"
+	"real_estate_finder/real_estate_finder/internal/webscraper"
 
 	"github.com/gin-gonic/gin"
 )
@@ -9,7 +14,7 @@ import (
 type repositoryInterface interface{}
 
 type webscraperInterface interface {
-	ParseRentalOffers() error
+	ParseRentalOffers(propertyTypes []types.PropertyType) error
 	GetRentalOfferse() ([]*dto.RentalOffer, error)
 }
 
@@ -33,11 +38,27 @@ func New(
 }
 
 func (s *Server) Start(addr string) error {
-	s.r.GET("rental-offers/parse", func(c *gin.Context) {
-		err := s.webscraper.ParseRentalOffers()
+	s.r.POST("rental-offers/parse", func(c *gin.Context) {
+		b, err := ioutil.ReadAll(c.Request.Body)
 		if err != nil {
 			c.IndentedJSON(500, gin.H{
-				"error": err.Error(),
+				"error": fmt.Errorf("ioutil.ReadAll: %v", err).Error(),
+			})
+			return
+		}
+		var req *dto.PropertyType
+		err = json.Unmarshal(b, &req)
+		if err != nil {
+			c.IndentedJSON(500, gin.H{
+				"error": fmt.Errorf("json.Unmarshal: %v", err).Error(),
+			})
+			return
+		}
+
+		err = s.webscraper.ParseRentalOffers(webscraper.ToRepoPropertyTypes(req))
+		if err != nil {
+			c.IndentedJSON(500, gin.H{
+				"error": fmt.Errorf("webscraper.ParseRentalOffers: %v", err).Error(),
 			})
 			return
 		}

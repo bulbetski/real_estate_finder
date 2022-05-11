@@ -2,12 +2,14 @@
 
 create table rental_offer
 (
-    id           serial primary key,
-    latitude     numeric      not null default 0,
-    longitude    numeric      not null default 0,
-    full_address varchar(128) not null default '',
-    link         varchar(128) not null default '',
-    created      timestamp             default CURRENT_TIMESTAMP
+    id            serial primary key,
+    latitude      numeric      not null,
+    longitude     numeric      not null,
+    full_address  varchar(128) not null,
+    link          varchar(128) not null,
+    price         bigint       not null,
+    property_type varchar(8)   not null,
+    created       timestamp default CURRENT_TIMESTAMP
 );
 
 create index if not exists rental_offer_coords_idx on rental_offer (latitude, longitude);
